@@ -6,9 +6,18 @@ main = Blueprint('main', __name__)
 
 @main.route('/')
 def index():
-    posts = Post.query.order_by(Post.created_at.desc()).all()
+    category_id = request.args.get('category_id', type=int)
+    if category_id:
+        posts = Post.query.filter_by(category_id=category_id).order_by(Post.created_at.desc()).all()
+    else:
+        posts = Post.query.order_by(Post.created_at.desc()).all()
     categories = Category.query.all()
     return render_template('index.html', posts=posts, categories=categories)
+
+@main.route('/manage/categories')
+def manage_categories():
+    categories = Category.query.all()
+    return render_template('category.html', categories=categories)
 
 @main.route('/post/<int:post_id>', methods=['GET', 'PUT'])
 def post(post_id):
@@ -60,11 +69,6 @@ def delete_post(post_id):
         db.session.rollback()
         return jsonify({'success': False, 'error': str(e)})
 
-@main.route('/categories')
-def categories():
-    categories = Category.query.all()
-    return jsonify([{'id': c.id, 'name': c.name} for c in categories])
-
 @main.route('/category', methods=['POST'])
 def create_category():
     try:
@@ -75,4 +79,26 @@ def create_category():
         return jsonify({'success': True})
     except Exception as e:
         db.session.rollback()
-        return jsonify({'success': False, 'error': str(e)}) 
+        return jsonify({'success': False, 'error': str(e)})
+
+@main.route('/category/<int:category_id>', methods=['PUT', 'DELETE'])
+def manage_category(category_id):
+    category = Category.query.get_or_404(category_id)
+    
+    if request.method == 'PUT':
+        try:
+            category.name = request.form['name']
+            db.session.commit()
+            return jsonify({'success': True})
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'success': False, 'error': str(e)})
+            
+    elif request.method == 'DELETE':
+        try:
+            db.session.delete(category)
+            db.session.commit()
+            return jsonify({'success': True})
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'success': False, 'error': str(e)}) 
