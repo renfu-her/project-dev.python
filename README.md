@@ -15,11 +15,17 @@ DATABASE_URL=mysql://root:password@localhost/blog_db
 mysql -u root -p
 ```
 
+# 安裝依賴
+
+```
+pip install -r requirements.txt
+```
+
 ## 遷移（初始化 DB）
 
 ```
 flask db init
-flask db migrate -m "initial migration"
+flask db migrate
 flask db upgrade
 ```
 
@@ -28,4 +34,10 @@ flask db upgrade
 ```
 flask db migrate -m "update migration"
 flask db upgrade
+```
+
+## 運行
+
+```
+flask run
 ```
