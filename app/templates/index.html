@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+
+{% block title %}首頁{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h2>文章列表</h2>
+    </div>
+    <div class="col-auto">
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createPostModal">
+            <i class="bi bi-plus-lg"></i> 新建文章
+        </button>
+    </div>
+</div>
+
+<!-- 文章列表 -->
+<div class="row">
+    {% for post in posts %}
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">{{ post.title }}</h5>
+                <h6 class="card-subtitle mb-2 text-muted">
+                    <span class="badge bg-secondary">{{ post.category_ref.name }}</span>
+                    {{ post.created_at.strftime('%Y-%m-%d %H:%M') }}
+                </h6>
+                <p class="card-text">{{ post.content[:200] }}...</p>
+            </div>
+            <div class="card-footer bg-transparent">
+                <div class="btn-group" role="group">
+                    <button class="btn btn-outline-primary btn-sm" onclick="editPost({{ post.id }})">
+                        <i class="bi bi-pencil"></i> 編輯
+                    </button>
+                    <button class="btn btn-outline-danger btn-sm" onclick="deletePost({{ post.id }})">
+                        <i class="bi bi-trash"></i> 刪除
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- 刪除確認 Modal -->
+<div class="modal fade" id="deleteConfirmModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">確認刪除</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                確定要刪除這篇文章嗎？此操作無法撤銷。
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-danger" id="confirmDelete">確定刪除</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // 刪除文章
+    let postToDelete = null;
+    
+    function deletePost(postId) {
+        postToDelete = postId;
+        new bootstrap.Modal(document.getElementById('deleteConfirmModal')).show();
+    }
+    
+    document.getElementById('confirmDelete').addEventListener('click', function() {
+        if (postToDelete) {
+            fetch(`/post/${postToDelete}/delete`, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('刪除失敗：' + data.error);
+                }
+            })
+            .catch(error => {
+                alert('發生錯誤：' + error);
+            });
+        }
+    });
+
+    // 錯誤處理增強
+    function showError(message) {
+        alert(message);  // 可以改為更好的錯誤提示UI
+    }
+
+    // 增強提交文章功能
+    function submitPost() {
+        const form = document.getElementById('createPostForm');
+        if (!form.checkValidity()) {
+            form.reportValidity();
+            return;
+        }
+
+        const formData = new FormData(form);
+        fetch('/create', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                showError(data.error || '創建文章失敗');
+            }
+        })
+        .catch(error => {
+            showError('發生錯誤：' + error);
+        });
+    }
+
+    // 增強更新文章功能
+    function updatePost() {
+        const form = document.getElementById('editPostForm');
+        if (!form.checkValidity()) {
+            form.reportValidity();
+            return;
+        }
+
+        const formData = new FormData(form);
+        const postId = form.post_id.value;
+        
+        fetch(`/post/${postId}`, {
+            method: 'PUT',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                showError(data.error || '更新文章失敗');
+            }
+        })
+        .catch(error => {
+            showError('發生錯誤：' + error);
+        });
+    }
+</script>
+{% endblock %} 

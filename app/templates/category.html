@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+
+{% block title %}分類管理{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h2>分類管理</h2>
+    </div>
+    <div class="col-auto">
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createCategoryModal">
+            <i class="bi bi-plus-lg"></i> 新增分類
+        </button>
+    </div>
+</div>
+
+<!-- 分類列表 -->
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>分類名稱</th>
+                        <th>文章數量</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for category in categories %}
+                    <tr>
+                        <td>{{ category.id }}</td>
+                        <td>{{ category.name }}</td>
+                        <td>{{ category.posts|length }}</td>
+                        <td>
+                            <div class="btn-group" role="group">
+                                <button class="btn btn-outline-primary btn-sm" onclick="editCategory({{ category.id }}, '{{ category.name }}')">
+                                    <i class="bi bi-pencil"></i> 編輯
+                                </button>
+                                <button class="btn btn-outline-danger btn-sm" onclick="deleteCategory({{ category.id }})">
+                                    <i class="bi bi-trash"></i> 刪除
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- 新增分類 Modal -->
+<div class="modal fade" id="createCategoryModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">新增分類</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createCategoryForm">
+                    <div class="mb-3">
+                        <label class="form-label">分類名稱</label>
+                        <input type="text" class="form-control" name="name" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="submitCategory()">確定</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 編輯分類 Modal -->
+<div class="modal fade" id="editCategoryModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">編輯分類</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editCategoryForm">
+                    <input type="hidden" name="category_id">
+                    <div class="mb-3">
+                        <label class="form-label">分類名稱</label>
+                        <input type="text" class="form-control" name="name" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="updateCategory()">更新</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 刪除確認 Modal -->
+<div class="modal fade" id="deleteCategoryModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">確認刪除</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                確定要刪除這個分類嗎？此操作可能會影響相關文章。
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteCategory">確定刪除</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // 新增分類
+    function submitCategory() {
+        const form = document.getElementById('createCategoryForm');
+        if (!form.checkValidity()) {
+            form.reportValidity();
+            return;
+        }
+
+        const formData = new FormData(form);
+        fetch('/category', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                showError(data.error || '創建分類失敗');
+            }
+        })
+        .catch(error => {
+            showError('發生錯誤：' + error);
+        });
+    }
+
+    // 編輯分類
+    function editCategory(categoryId, categoryName) {
+        const form = document.getElementById('editCategoryForm');
+        form.category_id.value = categoryId;
+        form.name.value = categoryName;
+        new bootstrap.Modal(document.getElementById('editCategoryModal')).show();
+    }
+
+    // 更新分類
+    function updateCategory() {
+        const form = document.getElementById('editCategoryForm');
+        if (!form.checkValidity()) {
+            form.reportValidity();
+            return;
+        }
+
+        const formData = new FormData(form);
+        const categoryId = form.category_id.value;
+        
+        fetch(`/category/${categoryId}`, {
+            method: 'PUT',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                showError(data.error || '更新分類失敗');
+            }
+        })
+        .catch(error => {
+            showError('發生錯誤：' + error);
+        });
+    }
+
+    // 刪除分類
+    let categoryToDelete = null;
+
+    function deleteCategory(categoryId) {
+        categoryToDelete = categoryId;
+        new bootstrap.Modal(document.getElementById('deleteCategoryModal')).show();
+    }
+
+    document.getElementById('confirmDeleteCategory').addEventListener('click', function() {
+        if (categoryToDelete) {
+            fetch(`/category/${categoryToDelete}`, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    showError(data.error || '刪除分類失敗');
+                }
+            })
+            .catch(error => {
+                showError('發生錯誤：' + error);
+            });
+        }
+    });
+
+    // 錯誤處理
+    function showError(message) {
+        alert(message);  // 可以改為更好的錯誤提示UI
+    }
+</script>
+{% endblock %} 
